@@ -3131,13 +3131,28 @@ function updateCallback<T>(callback: T, deps: Array<mixed> | void | null): T {
   return callback;
 }
 
+/**
+ * useMemo的创建
+ * @param nextCreate
+ * @param deps
+ * @returns {T}
+ */
 function mountMemo<T>(
   nextCreate: () => T,
   deps: Array<mixed> | void | null,
 ): T {
+  // 创建一个hook节点
   const hook = mountWorkInProgressHook();
+  // 初始依赖
   const nextDeps = deps === undefined ? null : deps;
+
+  /**
+   * 计算useMemo里callback的返回值
+   * 这是与 useCallback() 不同的地方，这里会执行回调函数callback
+   */
   const nextValue = nextCreate();
+
+  // 开发模式下两次调用hook
   if (shouldDoubleInvokeUserFnsInHooksDEV) {
     setIsStrictModeForDevtools(true);
     try {
@@ -3146,25 +3161,49 @@ function mountMemo<T>(
       setIsStrictModeForDevtools(false);
     }
   }
+
+  // 将返回值和依赖项进行存储
   hook.memoizedState = [nextValue, nextDeps];
+  // 返回执行callback()的返回值
   return nextValue;
 }
 
+/**
+ * useMemo的更新
+ * @param nextCreate
+ * @param deps
+ * @returns {T}
+ */
 function updateMemo<T>(
   nextCreate: () => T,
   deps: Array<mixed> | void | null,
 ): T {
   const hook = updateWorkInProgressHook();
+  // 更新依赖
   const nextDeps = deps === undefined ? null : deps;
+  //  取出上次存储的数据: [prevValue, prevDeps]
   const prevState = hook.memoizedState;
+
   // Assume these are defined. If they're not, areHookInputsEqual will warn.
+  // 更新依赖 不存在
   if (nextDeps !== null) {
+    // 上一次依赖
     const prevDeps: Array<mixed> | null = prevState[1];
+    /**
+     * areHookInputsEqual() 用来对比依赖
+     * 依赖不为空 且 前后两个依赖没有发生变化
+     * 返回之前的prevValue prevState[0]
+     */
     if (areHookInputsEqual(nextDeps, prevDeps)) {
       return prevState[0];
     }
   }
+
+
+  // 重新计算callback的返回结果，并进行存储
   const nextValue = nextCreate();
+
+  // 开发模式下两次调用hook
   if (shouldDoubleInvokeUserFnsInHooksDEV) {
     setIsStrictModeForDevtools(true);
     try {
@@ -3173,6 +3212,8 @@ function updateMemo<T>(
       setIsStrictModeForDevtools(false);
     }
   }
+
+  // 将callback的返回结果和依赖项进行存储 并返回新值
   hook.memoizedState = [nextValue, nextDeps];
   return nextValue;
 }
