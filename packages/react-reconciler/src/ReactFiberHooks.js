@@ -3079,23 +3079,54 @@ function mountDebugValue<T>(value: T, formatterFn: ?(value: T) => mixed): void {
 
 const updateDebugValue = mountDebugValue;
 
+/**
+ * useCallback的创建
+ * @param callback
+ * @param deps
+ * @returns {T}
+ */
 function mountCallback<T>(callback: T, deps: Array<mixed> | void | null): T {
+  // 创建一个新的hook节点
   const hook = mountWorkInProgressHook();
+  // 初始依赖
   const nextDeps = deps === undefined ? null : deps;
+  // 直接将callback和依赖项进行存储
   hook.memoizedState = [callback, nextDeps];
+  // useCallback 的返回值就是这个传入 callback
   return callback;
 }
 
+/**
+ * useCallback的更新
+ * @param callback
+ * @param deps
+ * @returns {T}
+ */
 function updateCallback<T>(callback: T, deps: Array<mixed> | void | null): T {
   const hook = updateWorkInProgressHook();
+  // 更新依赖
   const nextDeps = deps === undefined ? null : deps;
+  // 取出上次存储的数据: [callback, prevDeps]
   const prevState = hook.memoizedState;
+  
+  // 更新依赖 不存在
   if (nextDeps !== null) {
+    // 上一次依赖
     const prevDeps: Array<mixed> | null = prevState[1];
+    /**
+     * areHookInputsEqual() 用来对比依赖
+     * 依赖不为空 且 前后两个依赖没有发生变化
+     * 返回之前的callback prevState[0]
+     */
     if (areHookInputsEqual(nextDeps, prevDeps)) {
       return prevState[0];
     }
   }
+
+  /**
+   * 若依赖项为空，或者依赖项发生了变动，则重新存储callback和依赖项
+   * 然后返回最新的callback
+   */
   hook.memoizedState = [callback, nextDeps];
   return callback;
 }
